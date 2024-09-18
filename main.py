@@ -1,11 +1,19 @@
 from fastapi import FastAPI
 from typing import Union
+from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
+import joblib
 
 app = FastAPI()
 
 data_movies = pd.read_csv("movies_dataset_modified.csv")
 data_credits = pd.read_csv("credits_dataset_modified.csv")
+data_recomendacion = pd.read_csv('movies_dataset_recomendacion.csv')
+
+matriz_tfidf = joblib.load("matriz_tfidf.pkl")
+
+similitud_coseno = cosine_similarity(matriz_tfidf)
+
 
 @app.get("/Cantidad Filmaciones Mes")
 def cantidad_filmaciones_mes(mes: str):
@@ -100,3 +108,15 @@ def get_director(director: str):
         salida += oracion
 
     return salida
+
+@app.get("/Recomendacion")
+def recomendacion(pelicula: str):
+    indice_pelicula = data_recomendacion[data_recomendacion['title'] == pelicula].index[0]
+
+    puntajes_similitud = list(enumerate(similitud_coseno[indice_pelicula]))
+
+    puntajes_similitud_ordenado = sorted(puntajes_similitud, reverse = True, key = lambda x: x[1])
+
+    peliculas_similares = [i[0] for i in puntajes_similitud_ordenado[1:6]]
+    
+    return "Las peliculas recomendadas son:", data_recomendacion['title'].iloc[peliculas_similares].to_list()
